@@ -67,3 +67,21 @@ mapa_escolaridade_pais = {
     'H': 'Não sei'
 }
 
+mapa_trabalho = {
+    'A': 'Apenas Estuda', 
+    'B': 'Trabalha e Estuda'
+}
+
+mapa_internet = {
+    'A': 'Sem Internet',
+    'B': 'Com Internet'
+}
+
+mapa_computador = {
+    'A': 'Não possui',
+    'B': 'Um computador',
+    'C': 'Dois computadores',
+    'D': 'Três computadores',
+    'E': 'Quatro ou mais'
+}
+
