@@ -69,5 +69,5 @@ if df_brasil is not None:
     st.info(f"""
     **Análise Técnica:**
     - O coeficiente **R = {corr_pr:.3f}** indica uma correlação positiva moderada. 
-    - Se a correlação do Paraná for **{'maior' if corr_pr > corr_br else 'menor'}** que a do Brasil, isso sugere que a renda familiar tem um peso **{'mais' if corr_pr > corr_br else 'menos'}** decisivo no desempenho dos alunos paranaenses do que na média nacional.
+    - Sugere que, em média, alunos de famílias com maior renda tendem a obter notas mais altas na redação.
     """)
