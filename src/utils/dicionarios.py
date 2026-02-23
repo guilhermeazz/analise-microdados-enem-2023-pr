@@ -85,3 +85,18 @@ mapa_computador = {
     'E': 'Quatro ou mais'
 }
 
+mapa_conclusao = {
+    1: 'Já concluído',
+    2: 'Concluinte 2023',
+    3: 'Conclusão após 2023',
+    4: 'Não concluído/Não cursando'
+}
+
+mapa_cores_prova = {
+    1221: 'Amarela',
+    1222: 'Cinza',
+    1223: 'Azul',
+    1224: 'Rosa',
+    1225: 'Laranja (Sabatista)',
+    1226: 'Verde (LIBRAS)'
+}
