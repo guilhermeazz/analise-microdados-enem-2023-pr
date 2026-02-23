@@ -23,3 +23,10 @@ mapa_treineiro = {
     0: 'Não Treineiro', 
     1: 'Treineiro'
 }
+
+mapa_dependencia_adm = {
+    1: 'Federal (Técnicos/IFs)',
+    2: 'Estadual',
+    3: 'Municipal',
+    4: 'Privada'
+}
