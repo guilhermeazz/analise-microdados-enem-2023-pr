@@ -6,10 +6,12 @@ from pathlib import Path
 DIRETORIO_ATUAL = Path(__file__).resolve().parent.parent.parent
 CAMINHO_CSV = DIRETORIO_ATUAL / 'data' / 'MICRODADOS_ENEM_2023.csv'
 
+
 COLUNAS_NECESSARIAS = [
     'SG_UF_PROVA', 'TP_SEXO', 'TP_COR_RACA', 'TP_FAIXA_ETARIA', 
     'NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO',
-    'Q006', 'TP_ESCOLA', 'IN_TREINEIRO' 
+    'Q006', 'TP_ESCOLA', 'IN_TREINEIRO', 'NO_MUNICIPIO_PROVA',
+    'TP_PRESENCA_CN', 'TP_PRESENCA_CH', 'TP_PRESENCA_LC', 'TP_PRESENCA_MT'
 ]
 
 @st.cache_data 
