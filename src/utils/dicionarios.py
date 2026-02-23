@@ -93,10 +93,13 @@ mapa_conclusao = {
 }
 
 mapa_cores_prova = {
-    1221: 'Amarela',
-    1222: 'Cinza',
-    1223: 'Azul',
-    1224: 'Rosa',
-    1225: 'Laranja (Sabatista)',
-    1226: 'Verde (LIBRAS)'
+    1211: 'Azul',
+    1212: 'Amarela',
+    1213: 'Rosa',
+    1214: 'Cinza',
+    1219: 'Verde (LIBRAS)',
+    1215: 'Rosa (Ampliada)',
+    1216: 'Rosa (Superampliada)',
+    1217: 'Laranja (Braile)',
+    1218: 'Laranja (Ledor)'
 }
