@@ -56,3 +56,14 @@ mapa_renda = {
     'Q': 'Acima de R$ 24.240,00'
 }
 
+mapa_escolaridade_pais = {
+    'A': 'Nunca estudou',
+    'B': 'Fundamental Incompleto (5º ano)',
+    'C': 'Fundamental Incompleto (9º ano)',
+    'D': 'Médio Incompleto',
+    'E': 'Médio Completo',
+    'F': 'Superior Completo',
+    'G': 'Pós-graduação Completa',
+    'H': 'Não sei'
+}
+
