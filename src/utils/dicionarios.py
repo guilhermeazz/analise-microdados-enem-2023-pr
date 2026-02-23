@@ -18,3 +18,8 @@ mapa_escola = {
     2: 'Pública', 
     3: 'Privada'
 }
+
+mapa_treineiro = {
+    0: 'Não Treineiro', 
+    1: 'Treineiro'
+}
