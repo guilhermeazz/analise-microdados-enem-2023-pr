@@ -30,3 +30,8 @@ mapa_dependencia_adm = {
     3: 'Municipal',
     4: 'Privada'
 }
+
+mapa_lingua = {
+    0: 'Inglês',
+    1: 'Espanhol'
+}
