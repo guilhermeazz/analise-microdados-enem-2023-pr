@@ -103,3 +103,9 @@ mapa_cores_prova = {
     1217: 'Laranja (Braile)',
     1218: 'Laranja (Ledor)'
 }
+
+def agrupar_moradores(n):
+    if n <= 2: return '1-2 (Pequena)'
+    if n <= 4: return '3-4 (Média)'
+    if n <= 6: return '5-6 (Grande)'
+    return '7 ou mais (Numerosa)'
