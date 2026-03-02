@@ -104,6 +104,24 @@ mapa_cores_prova = {
     1218: 'Laranja (Ledor)'
 }
 
+MAPA_MESTRE_ENEM = {
+    'TP_SEXO': mapa_sexo,
+    'TP_COR_RACA': mapa_raca,
+    'TP_FAIXA_ETARIA': mapa_idade,
+    'TP_ESCOLA': mapa_escola,
+    'IN_TREINEIRO': mapa_treineiro,
+    'TP_DEPENDENCIA_ADM_ESC': mapa_dependencia_adm,
+    'TP_LINGUA': mapa_lingua,
+    'Q006': mapa_renda,
+    'Q001': mapa_escolaridade_pais,
+    'Q002': mapa_escolaridade_pais,
+    'Q021': mapa_trabalho,
+    'Q025': mapa_internet,
+    'Q024': mapa_computador,
+    'TP_ST_CONCLUSAO': mapa_conclusao,
+    'CO_PROVA_MT': mapa_cores_prova
+}
+
 def agrupar_moradores(n):
     if n <= 2: return '1-2 (Pequena)'
     if n <= 4: return '3-4 (Média)'
