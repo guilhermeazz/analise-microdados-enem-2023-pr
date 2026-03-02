@@ -1,31 +1,29 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.data_loader import carregar_dados
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Gargalos da Redação", page_icon="✍️", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, df_br, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    df_redacao = df_brasil[df_brasil['NU_NOTA_REDACAO'] > 0].copy()
-    
-    df_pr = df_redacao[df_redacao['SG_UF_PROVA'] == 'PR']
-    df_br = df_redacao[df_redacao['SG_UF_PROVA'] != 'PR']
+if df_pr is not None and df_br is not None:
+    df_pr_red = df_pr[df_pr['NU_NOTA_REDACAO'] > 0].copy()
+    df_br_red = df_br[df_br['NU_NOTA_REDACAO'] > 0].copy()
 
     st.header("10. Análise das 5 Competências da Redação")
-    st.write("Comparativo detalhado: Escala ajustada para evidenciar disparidades sem distorcer a percepção de nota zero.")
+    st.write("Comparativo detalhado entre o Paraná e a média nacional nas competências específicas avaliadas pelo INEP.")
 
     competencias = {
-        'NU_NOTA_COMP1': 'Domínio da Norma Culta',
-        'NU_NOTA_COMP2': 'Compreensão do Tema',
-        'NU_NOTA_COMP3': 'Organização das Ideias',
-        'NU_NOTA_COMP4': 'Mecanismos Coesivos',
-        'NU_NOTA_COMP5': 'Proposta de Intervenção'
+        'NU_NOTA_COMP1': 'Norma Culta',
+        'NU_NOTA_COMP2': 'Tema/Estrutura',
+        'NU_NOTA_COMP3': 'Argumentação',
+        'NU_NOTA_COMP4': 'Coesão',
+        'NU_NOTA_COMP5': 'Intervenção'
     }
 
-    medias_pr = df_pr[list(competencias.keys())].mean().values
-    medias_br = df_br[list(competencias.keys())].mean().values
+    medias_pr = df_pr_red[list(competencias.keys())].mean().values
+    medias_br = df_br_red[list(competencias.keys())].mean().values
     
     labels = list(competencias.values())
     labels.append(labels[0])
@@ -42,8 +40,8 @@ if df_brasil is not None:
         r=r_br,
         theta=labels,
         fill='toself',
-        name='Brasil',
-        fillcolor='rgba(127, 127, 127, 0.3)',
+        name='Brasil (Excl. PR)',
+        fillcolor='rgba(127, 127, 127, 0.2)',
         line=dict(color='#7f7f7f', width=2),
         marker=dict(symbol='circle', size=7),
         hovertemplate='%{theta}: %{r:.2f}'
@@ -64,8 +62,8 @@ if df_brasil is not None:
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[80, 170],
-                dtick=15,
+                range=[110, 160],
+                dtick=10,
                 gridcolor='rgba(0,0,0,0.1)',
                 angle=90,
                 tickangle=90
@@ -73,11 +71,13 @@ if df_brasil is not None:
             bgcolor="white"
         ),
         showlegend=True,
-        title="Diferenças de Desempenho (Escala de Destaque: 80 - 170)",
-        height=650
+        title="Diferenças de Desempenho (Foco: 110 - 160 pontos)",
+        height=600
     )
 
     st.plotly_chart(fig_radar, use_container_width=True)
+
+    
 
     st.markdown("---")
 
@@ -94,12 +94,18 @@ if df_brasil is not None:
     gargalo = df_diff.iloc[-1]
 
     with col1:
-        st.success(f"🌟 **Ponto Forte:** {ponto_forte['Competência']}")
-        st.write(f"Vantagem de **{ponto_forte['Diferença']:.2f}** pontos.")
+        st.success(f"🌟 **Destaque do PR:** {ponto_forte['Competência']}")
+        st.write(f"Superioridade de **{ponto_forte['Diferença']:.2f}** pontos sobre o Brasil.")
 
     with col2:
-        st.error(f"⚠️ **Gargalo Relativo:** {gargalo['Competência']}")
+        st.error(f"⚠️ **Menor Vantagem:** {gargalo['Competência']}")
         st.write(f"Vantagem de apenas **{gargalo['Diferença']:.2f}** pontos.")
 
     st.markdown("---")
     st.dataframe(df_diff.style.format(precision=2), use_container_width=True)
+
+    st.info("""
+    **Interpretação:** O gráfico de radar (aranha) permite visualizar o equilíbrio entre as competências. 
+    Uma forma mais 'esticada' indica especialização, enquanto uma forma regular indica equilíbrio pedagógico. 
+    A escala foi ajustada entre 110 e 160 para evidenciar onde as linhas se distanciam.
+    """)

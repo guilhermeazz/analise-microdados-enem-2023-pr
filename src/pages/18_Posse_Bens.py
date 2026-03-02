@@ -2,66 +2,71 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from scipy import stats
-from utils.data_loader import carregar_dados
-from utils.dicionarios import mapa_computador
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Posse de Bens e Notas", page_icon="💻", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, _, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    df_pr = df_brasil[df_brasil['SG_UF_PROVA'] == 'PR'].copy()
-    df_pr = df_pr.dropna(subset=['Q024', 'NU_NOTA_MT', 'NU_NOTA_REDACAO'])
+if df_pr is not None:
+    # Filtramos apenas candidatos com notas e informação de computador
+    df_pr = df_pr.dropna(subset=['Q024', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']).copy()
 
+    # Mapeamento numérico para o teste de Pearson (exige entrada quantitativa)
     mapa_numerico = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4}
     df_pr['PC_NUMERICO'] = df_pr['Q024'].map(mapa_numerico)
 
     st.header("18. Correlação: Computador vs. Desempenho")
-    st.write("Existe uma relação estatística entre a quantidade de PCs em casa e o sucesso em Matemática e Redação?")
+    st.write("Existe uma relação estatística entre a quantidade de computadores em casa e o sucesso em Matemática e Redação no Paraná?")
 
+    # Cálculos de Correlação de Pearson e Significância
     corr_mt, p_mt = stats.pearsonr(df_pr['PC_NUMERICO'], df_pr['NU_NOTA_MT'])
     corr_red, p_red = stats.pearsonr(df_pr['PC_NUMERICO'], df_pr['NU_NOTA_REDACAO'])
 
     c1, c2 = st.columns(2)
     with c1:
-        st.metric("Correlação em Matemática", f"{corr_mt:.3f}", help="Varia de -1 a 1. Acima de 0.3 é considerada relevante.")
+        st.metric("Correlação em Matemática ($R$)", f"{corr_mt:.3f}")
         if p_mt < 0.05:
-            st.caption("✅ Estatisticamente Significativo")
+            st.caption("✅ Significância Estatística Confirmada")
     with c2:
-        st.metric("Correlação em Redação", f"{corr_red:.3f}")
+        st.metric("Correlação em Redação ($R$)", f"{corr_red:.3f}")
         if p_red < 0.05:
-            st.caption("✅ Estatisticamente Significativo")
+            st.caption("✅ Significância Estatística Confirmada")
 
     st.markdown("---")
 
+    
+
     st.subheader("Progressão de Notas por Quantidade de PCs")
     
-    df_resumo = df_pr.groupby('Q024').agg({
+    # Agrupamento utilizando os labels processados no pipeline
+    df_resumo = df_pr.groupby(['Q024', 'Q024_LABEL'], observed=True).agg({
         'NU_NOTA_MT': 'mean',
         'NU_NOTA_REDACAO': 'mean'
-    }).rename(index=mapa_computador).reset_index()
+    }).reset_index()
 
-    df_melt = df_resumo.melt(id_vars='Q024', var_name='Matéria', value_name='Nota')
+    df_melt = df_resumo.melt(id_vars=['Q024', 'Q024_LABEL'], var_name='Matéria', value_name='Nota')
     df_melt['Matéria'] = df_melt['Matéria'].replace({'NU_NOTA_MT': 'Matemática', 'NU_NOTA_REDACAO': 'Redação'})
 
+    # Gráfico de barras agrupado por matéria
     fig_bar = px.bar(
-        df_melt, x='Q024', y='Nota', color='Matéria',
+        df_melt, x='Q024_LABEL', y='Nota', color='Matéria',
         barmode='group', text_auto='.0f',
         title="Notas Médias vs. Computadores na Residência (PR)",
-        labels={'Q024': 'Posse de Computador', 'Nota': 'Nota Média'},
+        labels={'Q024_LABEL': 'Computadores na Casa', 'Nota': 'Nota Média'},
         color_discrete_map={'Matemática': '#636EFA', 'Redação': '#EF553B'}
     )
-    fig_bar.update_layout(yaxis=dict(range=[400, 750]))
+    fig_bar.update_layout(yaxis=dict(range=[400, 750]), height=500)
     st.plotly_chart(fig_bar, use_container_width=True)
 
     st.info(f"""
-    **Análise Estatística:**
-    - A correlação para Matemática ({corr_mt:.3f}) e Redação ({corr_red:.3f}) é **positiva**. 
-    - Isso significa que, estatisticamente, cada computador adicional na casa tende a acompanhar um aumento nas notas.
-    - Como o p-valor é menor que 0.05, descartamos a hipótese de que esse resultado seja obra do acaso.
+    **Análise Técnica:**
+    - Os coeficientes de correlação de Pearson ($R_{{MT}} = {corr_mt:.3f}$ e $R_{{Red}} = {corr_red:.3f}$) indicam uma associação positiva. 
+    - Como $p < 0.05$ em ambos os casos, rejeitamos a hipótese nula de que não há relação entre as variáveis.
+    - O gráfico mostra uma escada de desempenho: quanto maior o acesso tecnológico, maior a nota média.
     """)
 
     st.warning("""
-    **Cuidado com a Causalidade:** Ter o computador causa a nota maior, ou famílias que têm condições de comprar computadores também têm acesso a melhores escolas e cursinhos? 
-    Na Ciência de Dados, dizemos que a variável 'Computador' é um excelente **preditor**, mas o sucesso é multifatorial.
+    **Distinção entre Correlação e Causalidade:** A posse de computador é um forte **preditor** de nota, mas também é um marcador de renda. 
+    Famílias com mais dispositivos costumam ter maior capital cultural e financeiro, o que também impacta o resultado final.
     """)

@@ -1,23 +1,15 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from utils.data_loader import carregar_dados
-from utils.dicionarios import mapa_renda
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Mitigação de Desigualdade", page_icon="⚖️", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, df_br, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    provas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
-    df_brasil['MEDIA_GERAL'] = df_brasil[provas].mean(axis=1)
-    
-    df_analise = df_brasil.dropna(subset=['Q006', 'MEDIA_GERAL']).copy()
-    df_pr = df_analise[df_analise['SG_UF_PROVA'] == 'PR']
-    df_br = df_analise[df_analise['SG_UF_PROVA'] != 'PR']
-
+if df_pr is not None and df_br is not None:
     st.header("13. Mitigação de Desigualdade Socioeconômica")
-    st.write("O Paraná é mais eficiente que o Brasil em reduzir a distância entre ricos e pobres no ENEM?")
+    st.write("O Paraná é mais eficiente que o Brasil em reduzir a distância entre extremos de renda no ENEM?")
 
     def calcular_gap_extremos(df):
         media_baixa = df[df['Q006'] == 'A']['MEDIA_GERAL'].mean()
@@ -34,7 +26,7 @@ if df_brasil is not None:
     
     with c2:
         diff_gap = gap_pr - gap_br
-        st.metric("Gap de Desigualdade (BR)", f"{gap_br:.2f} pts", 
+        st.metric("Gap de Desigualdade (Brasil Excl. PR)", f"{gap_br:.2f} pts", 
                   delta=f"{diff_gap:.2f} pts", delta_color="inverse")
 
     with c3:
@@ -43,29 +35,34 @@ if df_brasil is not None:
 
     st.markdown("---")
 
+    
+
     st.subheader("Curva de Desigualdade: PR vs Brasil")
     
-    def preparar_curva(df, local):
-        return df.groupby('Q006')['MEDIA_GERAL'].mean().reset_index()
+    def preparar_curva(df):
+        return df.groupby('Q006', observed=True)['MEDIA_GERAL'].mean().reset_index()
 
-    curva_pr = preparar_curva(df_pr, 'Paraná')
-    curva_br = preparar_curva(df_br, 'Brasil')
+    curva_pr = preparar_curva(df_pr)
+    curva_br = preparar_curva(df_br)
 
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(x=curva_br['Q006'], y=curva_br['MEDIA_GERAL'],
-                             mode='lines+markers', name='Brasil',
-                             line=dict(color='#7f7f7f', width=2, dash='dot')))
+                             mode='lines+markers', name='Brasil (Excl. PR)',
+                             line=dict(color='#7f7f7f', width=2, dash='dot'),
+                             hovertemplate='Brasil: %{y:.2f}'))
 
     fig.add_trace(go.Scatter(x=curva_pr['Q006'], y=curva_pr['MEDIA_GERAL'],
                              mode='lines+markers', name='Paraná',
-                             line=dict(color='#1f77b4', width=4)))
+                             line=dict(color='#1f77b4', width=4),
+                             hovertemplate='Paraná: %{y:.2f}'))
 
     fig.update_layout(
         title="Impacto da Renda na Nota Média Geral",
-        xaxis_title="Classe Social (A: Menor Renda -> Q: Maior Renda)",
+        xaxis_title="Faixa de Renda (A: Sem Renda -> Q: Acima de 24k)",
         yaxis_title="Média Geral",
-        hovermode="x unified"
+        hovermode="x unified",
+        height=500
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -77,7 +74,7 @@ if df_brasil is not None:
         st.warning(f"⚠️ **Veredito:** A desigualdade socioeconômica no Paraná é **mais acentuada** que na média nacional. O gap entre os extremos é {diff_gap:.2f} pontos maior.")
 
     st.info("""
-    **O que é o Índice de Equidade?**
-    Representa o percentual da nota da elite que a classe sem renda consegue atingir. 
-    Se o índice for 80%, significa que a base da pirâmide alcança 80% do desempenho do topo.
+    **Análise Técnica:**
+    O **Índice de Equidade** indica o quanto a base da pirâmide (Classe A) consegue performar em relação ao topo (Classe Q). 
+    Quanto mais próximo de 100%, mais 'imune' ao fator financeiro é o sistema educacional do estado.
     """)

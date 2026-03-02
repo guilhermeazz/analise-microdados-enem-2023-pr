@@ -1,32 +1,26 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.data_loader import carregar_dados
-from utils.dicionarios import mapa_escolaridade_pais
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Herança Educacional", page_icon="🎓", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, _, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    provas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
-    df_brasil['MEDIA_GERAL'] = df_brasil[provas].mean(axis=1)
-    
-    df_pr = df_brasil[df_brasil['SG_UF_PROVA'] == 'PR'].dropna(subset=['Q001', 'Q002', 'MEDIA_GERAL']).copy()
-
+if df_pr is not None:
     st.header("15. Herança Educacional e Alta Performance")
     st.write("Qual a probabilidade de um aluno atingir média > 700 baseada na instrução dos pais?")
 
     df_pr['ALTA_PERFORMANCE'] = (df_pr['MEDIA_GERAL'] >= 700).astype(int)
 
-    def calcular_probabilidade(df, coluna):
-        prob = df.groupby(coluna)['ALTA_PERFORMANCE'].mean().reset_index()
+    def calcular_probabilidade(df, col_label):
+        prob = df.groupby(col_label, observed=True)['ALTA_PERFORMANCE'].mean().reset_index()
         prob['Probabilidade (%)'] = prob['ALTA_PERFORMANCE'] * 100
-        prob['Escolaridade'] = prob[coluna].map(mapa_escolaridade_pais)
-        return prob.sort_values(coluna)
+        prob.columns = ['Escolaridade', 'Média_Prob', 'Probabilidade (%)']
+        return prob
 
-    prob_pai = calcular_probabilidade(df_pr, 'Q001')
-    prob_mae = calcular_probabilidade(df_pr, 'Q002')
+    prob_pai = calcular_probabilidade(df_pr, 'Q001_LABEL')
+    prob_mae = calcular_probabilidade(df_pr, 'Q002_LABEL')
 
     st.subheader("Probabilidade de Média > 700")
     
@@ -53,27 +47,31 @@ if df_brasil is not None:
         st.plotly_chart(fig_pai, use_container_width=True)
 
     st.markdown("---")
+    
+    
+    
     st.subheader("Cruzamento: O Efeito Combinado")
     
-    heatmap_data = df_pr.pivot_table(
-        index='Q002', columns='Q001', values='ALTA_PERFORMANCE', aggfunc='mean'
+    heatmap_raw = df_pr.pivot_table(
+        index='Q002_LABEL', 
+        columns='Q001_LABEL', 
+        values='ALTA_PERFORMANCE', 
+        aggfunc='mean',
+        observed=True
     ) * 100
     
-    heatmap_data.index = [mapa_escolaridade_pais.get(i) for i in heatmap_data.index]
-    heatmap_data.columns = [mapa_escolaridade_pais.get(c) for c in heatmap_data.columns]
-
     fig_heat = px.imshow(
-        heatmap_data,
+        heatmap_raw,
         labels=dict(x="Escolaridade do Pai", y="Escolaridade da Mãe", color="Probabilidade (%)"),
-        x=heatmap_data.columns,
-        y=heatmap_data.index,
         color_continuous_scale='Viridis',
-        aspect="auto"
+        aspect="auto",
+        text_auto=".1f"
     )
     st.plotly_chart(fig_heat, use_container_width=True)
 
     st.info("""
-    **Interpretação:** - As barras mostram o salto de probabilidade conforme o nível de instrução aumenta. 
-    - No heatmap, as cores mais claras (amarelo/verde) indicam as combinações familiares onde é mais provável encontrar alunos de alta performance. 
-    - Note se o 'gap' entre pais com pós-graduação e pais sem instrução é maior no caso da mãe ou do pai.
+    **Análise Técnica:**
+    - A probabilidade é calculada como $P(Performance \geq 700 | Escolaridade)$.
+    - O Heatmap revela o efeito sinérgico: as maiores probabilidades concentram-se no quadrante onde ambos os pais possuem nível superior ou pós-graduação.
+    - Este fenômeno é frequentemente discutido na sociologia da educação como 'Capital Cultural', onde o ambiente instrucional familiar potencializa o desempenho acadêmico.
     """)

@@ -1,30 +1,35 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.data_loader import carregar_dados
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Distorção Idade-Série", page_icon="⏳", layout="wide")
 
-df_brasil = carregar_dados()
+# 1. Carregamento: df_pr (Paraná) e df_br (Brasil SEM o Paraná)
+# Utilizamos a ramificação de performance (já limpa de faltantes)
+df_pr_all, df_br_all, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    df_concluintes = df_brasil[df_brasil['TP_ST_CONCLUSAO'] == 2].copy()
+if df_pr_all is not None:
     
-    df_concluintes['Status_Idade'] = df_concluintes['TP_FAIXA_ETARIA'].apply(
-        lambda x: 'Idade Ideal (≤18)' if x <= 3 else 'Atraso Escolar (19+)'
-    )
-    
-    provas = ['NU_NOTA_CN', 'NU_NOTA_CH', 'NU_NOTA_LC', 'NU_NOTA_MT', 'NU_NOTA_REDACAO']
-    df_concluintes['MEDIA_GERAL'] = df_concluintes[provas].mean(axis=1)
+    # 2. Filtro de Concluintes (TP_ST_CONCLUSAO == 2: Conclui em 2023)
+    # Analisamos a distorção apenas em quem deveria estar terminando o ciclo regular
+    df_pr = df_pr_all[df_pr_all['TP_ST_CONCLUSAO'] == 2].copy()
+    df_br = df_br_all[df_br_all['TP_ST_CONCLUSAO'] == 2].copy()
 
-    df_pr = df_concluintes[df_concluintes['SG_UF_PROVA'] == 'PR']
-    df_br = df_concluintes[df_concluintes['SG_UF_PROVA'] != 'PR']
+    # 3. Categorização da Distorção
+    # No ENEM: 1 (<17), 2 (17), 3 (18). Acima disso considera-se atraso para o Ensino Médio.
+    def categorizar_idade(x):
+        return 'Idade Ideal (≤18)' if x <= 3 else 'Atraso Escolar (19+)'
+
+    df_pr['Status_Idade'] = df_pr['TP_FAIXA_ETARIA'].apply(categorizar_idade)
+    df_br['Status_Idade'] = df_br['TP_FAIXA_ETARIA'].apply(categorizar_idade)
 
     st.header("19. Distorção Idade-Série no Paraná")
-    st.write("Análise do impacto do atraso escolar no desempenho dos alunos que concluem o Ensino Médio.")
+    st.write("Análise do impacto do atraso escolar no desempenho dos alunos concluintes em 2023.")
 
+    # 4. Cálculo de Gaps de Performance
     def calc_gap(df):
-        medias = df.groupby('Status_Idade')['MEDIA_GERAL'].mean()
+        medias = df.groupby('Status_Idade', observed=True)['MEDIA_GERAL'].mean()
         return medias.get('Idade Ideal (≤18)', 0), medias.get('Atraso Escolar (19+)', 0)
 
     ideal_pr, atraso_pr = calc_gap(df_pr)
@@ -44,18 +49,27 @@ if df_brasil is not None:
 
     st.markdown("---")
 
+    
+
     st.subheader("Distribuição das Notas: Ideal vs. Atraso")
     
-    df_plot = pd.concat([
-        df_pr.assign(Local='Paraná'),
-        df_br.assign(Local='Brasil')
-    ])
+    # Preparação de dados para o Boxplot
+    df_plot_pr = df_pr[['Status_Idade', 'MEDIA_GERAL']].copy()
+    df_plot_pr['Local'] = 'Paraná'
+    
+    df_plot_br = df_br[['Status_Idade', 'MEDIA_GERAL']].copy()
+    df_plot_br['Local'] = 'Brasil (Excl. PR)'
+    
+    df_plot = pd.concat([df_plot_pr, df_plot_br])
 
     fig_box = px.box(
         df_plot, x='Status_Idade', y='MEDIA_GERAL', color='Local',
-        title="Comparativo de Dispersão de Notas",
-        color_discrete_map={'Paraná': '#1f77b4', 'Brasil': '#7f7f7f'}
+        title="Impacto do Atraso Escolar na Dispersão de Notas",
+        labels={'MEDIA_GERAL': 'Média Geral', 'Status_Idade': 'Perfil do Aluno'},
+        color_discrete_map={'Paraná': '#1f77b4', 'Brasil (Excl. PR)': '#7f7f7f'},
+        points=False # Otimização de performance
     )
+    fig_box.update_layout(height=500)
     st.plotly_chart(fig_box, use_container_width=True)
 
     st.markdown("---")
@@ -65,11 +79,16 @@ if df_brasil is not None:
     dist_br = df_br['Status_Idade'].value_counts(normalize=True) * 100
     
     col_a, col_b = st.columns(2)
-    col_a.write(f"**Paraná:** {dist_pr.get('Atraso Escolar (19+)', 0):.1f}% dos concluintes estão fora da idade ideal.")
-    col_b.write(f"**Brasil:** {dist_br.get('Atraso Escolar (19+)', 0):.1f}% dos concluintes estão fora da idade ideal.")
+    with col_a:
+        st.write(f"**Paraná:**")
+        st.info(f"{dist_pr.get('Atraso Escolar (19+)', 0):.1f}% dos concluintes estão em atraso.")
+    with col_b:
+        st.write(f"**Brasil (Excl. PR):**")
+        st.warning(f"{dist_br.get('Atraso Escolar (19+)', 0):.1f}% dos concluintes estão em atraso.")
 
     st.info(f"""
-    **Conclusão da Análise:** - No Paraná, o atraso escolar gera uma perda de **{gap_pr:.2f} pontos**. 
-    - Comparado ao Brasil, esse impacto é **{'mais' if gap_pr > gap_br else 'menos'}** severo.
-    - O atraso escolar é um forte indicador de interrupções na trajetória de aprendizagem, o que reflete diretamente na base de conhecimentos necessária para o ENEM.
+    **Análise Técnica:**
+    - A distorção idade-série no Paraná resulta em um decréscimo de **{gap_pr:.2f} pontos** na média geral em relação aos alunos na idade ideal.
+    - Este fenômeno indica que interrupções na trajetória escolar ou reprovações acumuladas impactam severamente a competitividade do candidato.
+    - O Boxplot revela que, além da média ser menor, a variabilidade (dispersão) entre os alunos em atraso tende a ser diferente, refletindo trajetórias de vida mais heterogêneas.
     """)

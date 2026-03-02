@@ -3,34 +3,47 @@ import pandas as pd
 import plotly.express as px
 from scipy.stats import chi2_contingency 
 
-from utils.data_loader import carregar_dados
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Taxa de Abstenção", page_icon="📉", layout="wide")
 
-df_brasil = carregar_dados()
+_, _, df_total = carregar_dados_projeto()
 
-if df_brasil is not None:
+if df_total is not None:
+    
     def calcular_status_presenca(df):
         presenca_dia1 = (df['TP_PRESENCA_CH'] == 1) & (df['TP_PRESENCA_LC'] == 1)
         presenca_dia2 = (df['TP_PRESENCA_CN'] == 1) & (df['TP_PRESENCA_MT'] == 1)
         
-        df['ABSTENCAO'] = ~ (presenca_dia1 & presenca_dia2)
+        df['ABSTENCAO'] = (df['TP_PRESENCA_CH'] == 0) & (df['TP_PRESENCA_MT'] == 0)
         
-        df['DESISTENCIA'] = presenca_dia1 & (~presenca_dia2)
+        df['DESISTENCIA'] = (df['TP_PRESENCA_CH'] == 1) & (df['TP_PRESENCA_MT'] == 0)
         return df
 
-    df_brasil = calcular_status_presenca(df_brasil)
-    df_parana = df_brasil[df_brasil['SG_UF_PROVA'] == 'PR'].copy()
+    df_total = calcular_status_presenca(df_total)
+    
+    df_parana = df_total[df_total['SG_UF_PROVA'] == 'PR'].copy()
+    df_brasil_comparativo = df_total[df_total['SG_UF_PROVA'] != 'PR'].copy()
 
     st.header("4. Taxa de Abstenção e Desistência")
     st.write("O Paraná teve uma taxa de ausentes maior ou menor que a média nacional? Existe relação com o município?")
 
     taxa_abs_pr = df_parana['ABSTENCAO'].mean() * 100
-    taxa_abs_br = df_brasil['ABSTENCAO'].mean() * 100
+    taxa_abs_br = df_brasil_comparativo['ABSTENCAO'].mean() * 100
     
     col1, col2 = st.columns(2)
-    col1.metric("Abstenção no Paraná", f"{taxa_abs_pr:.2f}%")
-    col2.metric("Abstenção no Brasil", f"{taxa_abs_br:.2f}%", delta=f"{taxa_abs_pr - taxa_abs_br:.2f} p.p.")
+    with col1:
+        st.metric(
+            label="Abstenção no Paraná", 
+            value=f"{taxa_abs_pr:.2f}%"
+        )
+    with col2:
+        st.metric(
+            label="Abstenção no Brasil (Excl. PR)", 
+            value=f"{taxa_abs_br:.2f}%", 
+            delta=f"{taxa_abs_pr - taxa_abs_br:.2f} p.p.",
+            delta_color="inverse" 
+        )
 
     st.markdown("---")
 
@@ -55,9 +68,11 @@ if df_brasil is not None:
         color='Taxa_Abstencao',
         color_continuous_scale='Reds'
     )
+    fig_mun.update_layout(yaxis={'categoryorder':'total ascending'})
     st.plotly_chart(fig_mun, use_container_width=True)
 
     st.markdown("---")
+    
     st.subheader("Existe correlação entre Município e Abstenção?")
     
     contingency_table = pd.crosstab(df_parana['NO_MUNICIPIO_PROVA'], df_parana['ABSTENCAO'])
@@ -67,8 +82,8 @@ if df_brasil is not None:
     st.write(f"- Valor de p (p-value): **{p:.4e}**")
     
     if p < 0.05:
-        st.success("✅ **Sim, existe uma relação estatisticamente significativa.** O município onde o candidato realiza a prova influencia a probabilidade de ele faltar.")
+        st.success("✅ **Resultado Significativo:** O município influencia estatisticamente a probabilidade de abstenção no PR.")
     else:
-        st.warning("❌ **Não foi encontrada relação significativa.** A abstenção parece ser uniforme entre os municípios.")
+        st.warning("❌ **Resultado Não Significativo:** A abstenção parece ser distribuída de forma uniforme pelo estado.")
 
-    st.info("💡 **Nota Técnica:** Embora o p-valor indique relação, a abstenção pode ser influenciada por fatores ocultos como infraestrutura de transporte local ou renda média do município.")
+    st.info("💡 **Dica para o Slide:** Cite que fatores como distância dos locais de prova e infraestrutura urbana de cada cidade impactam esse resultado.")

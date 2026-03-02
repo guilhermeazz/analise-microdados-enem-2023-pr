@@ -2,16 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from utils.data_loader import carregar_dados
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Variabilidade das Notas", page_icon="📊", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, df_br, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    df_parana = df_brasil[df_brasil['SG_UF_PROVA'] == 'PR'].copy()
-    df_resto_brasil = df_brasil[df_brasil['SG_UF_PROVA'] != 'PR'].copy()
-
+if df_pr is not None and df_br is not None:
     st.header("7. Variabilidade das Notas (Dispersão)")
     st.write("Qual área do conhecimento apresenta a maior dispersão no Paraná e como ela se compara ao restante do Brasil?")
 
@@ -23,8 +20,8 @@ if df_brasil is not None:
         'NU_NOTA_REDACAO': 'Redação'
     }
 
-    stats_pr = df_parana[list(provas.keys())].std().rename(index=provas)
-    stats_br = df_resto_brasil[list(provas.keys())].std().rename(index=provas)
+    stats_pr = df_pr[list(provas.keys())].std().rename(index=provas)
+    stats_br = df_br[list(provas.keys())].std().rename(index=provas)
 
     df_sigma = pd.DataFrame({
         'Área': stats_pr.index,
@@ -42,7 +39,7 @@ if df_brasil is not None:
         
         fig_sigma = px.bar(
             df_plot, x='Área', y='Sigma', color='Localidade', barmode='group',
-            title="Comparativo de Desvio Padrão (Quanto maior, mais dispersas as notas)",
+            title="Comparativo de Desvio Padrão (Foco em Dispersão)",
             color_discrete_map={'Desvio Padrão PR': '#1f77b4', 'Desvio Padrão Brasil': '#7f7f7f'},
             text_auto='.1f'
         )
@@ -61,9 +58,9 @@ if df_brasil is not None:
     area_selecionada = st.selectbox("Selecione uma área para ver a distribuição:", list(provas.values()))
     cod_coluna = [k for k, v in provas.items() if v == area_selecionada][0]
 
-    df_box_pr = df_parana[[cod_coluna]].dropna()
+    df_box_pr = df_pr[[cod_coluna]].dropna()
     df_box_pr['Local'] = 'Paraná'
-    df_box_br = df_resto_brasil[[cod_coluna]].dropna()
+    df_box_br = df_br[[cod_coluna]].dropna()
     df_box_br['Local'] = 'Resto do Brasil'
     
     df_box_total = pd.concat([df_box_pr, df_box_br])
@@ -72,7 +69,7 @@ if df_brasil is not None:
         df_box_total, x='Local', y=cod_coluna, color='Local',
         title=f"Distribuição de Notas: {area_selecionada}",
         color_discrete_map={'Paraná': '#1f77b4', 'Resto do Brasil': '#7f7f7f'},
-        points=False # Remove pontos individuais para performance
+        points=False 
     )
     st.plotly_chart(fig_box, use_container_width=True)
 
@@ -83,6 +80,6 @@ if df_brasil is not None:
     
     st.info("""
     **O que isso significa?**
-    - Um desvio padrão elevado em Matemática ou Redação costuma indicar uma desigualdade educacional acentuada, onde um grupo de alunos domina a matéria enquanto outro tem dificuldades básicas.
-    - Se o Paraná possui um $\sigma$ menor que o Brasil, significa que o ensino no estado é mais homogêneo (notas mais próximas umas das outras).
+    - Um desvio padrão elevado indica desigualdade educacional acentuada: há alunos dominando a matéria e outros com dificuldades básicas.
+    - Se o Paraná possui um $\sigma$ menor que o Brasil, o ensino no estado é mais homogêneo.
     """)

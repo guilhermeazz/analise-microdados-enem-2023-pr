@@ -2,74 +2,80 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-from utils.data_loader import carregar_dados
-from utils.dicionarios import mapa_escola
+from utils.data_loader import carregar_dados_projeto
 
 st.set_page_config(page_title="Escolas Públicas vs Privadas", page_icon="🏫", layout="wide")
 
-df_brasil = carregar_dados()
+df_pr, df_br, _ = carregar_dados_projeto()
 
-if df_brasil is not None:
-    df_parana = df_brasil[df_brasil['SG_UF_PROVA'] == 'PR'].copy()
+if df_pr is not None and df_br is not None:
 
     st.header("2. Natureza da Instituição: Paraná x Brasil")
-    st.write("Qual a proporção de alunos de escolas públicas vs. privadas no Paraná em comparação ao cenário brasileiro?")
+    st.write("Qual a proporção de alunos de escolas públicas vs. privadas no Paraná em comparação ao restante do Brasil?")
     
     st.markdown("---")
     
-    st.info("❗ Muitos candidatos já concluíram o ensino médio em anos anteriores e marcam 'Não Respondeu'.")
-    filtrar_declarados = st.checkbox("Ocultar 'Não Respondeu' (Calcular proporção real apenas entre Pública e Privada)", value=True)
+    st.info("💡 Nota: Candidatos que já concluíram o ensino médio ou são treineiros costumam aparecer como 'Não Respondeu'.")
+    
+    filtrar_declarados = st.checkbox("Focar apenas em candidatos de escolas declaradas (Pública vs Privada)", value=True)
 
     if filtrar_declarados:
-        df_br_analise = df_brasil[df_brasil['TP_ESCOLA'].isin([2, 3])]
-        df_pr_analise = df_parana[df_parana['TP_ESCOLA'].isin([2, 3])]
+        df_pr_analise = df_pr[df_pr['TP_ESCOLA_LABEL'].isin(['Pública', 'Privada'])]
+        df_br_analise = df_br[df_br['TP_ESCOLA_LABEL'].isin(['Pública', 'Privada'])]
     else:
-        df_br_analise = df_brasil
-        df_pr_analise = df_parana
+        df_pr_analise = df_pr
+        df_br_analise = df_br
 
-    prop_pr = df_pr_analise['TP_ESCOLA'].value_counts(normalize=True).rename(index=mapa_escola) * 100
-    prop_br = df_br_analise['TP_ESCOLA'].value_counts(normalize=True).rename(index=mapa_escola) * 100
+    def obter_proporcoes(df):
+        prop = df['TP_ESCOLA_LABEL'].value_counts(normalize=True) * 100
+        return prop.reset_index().rename(columns={'TP_ESCOLA_LABEL': 'Tipo de Escola', 'proportion': 'Porcentagem'})
 
-    df_plot_pr = prop_pr.reset_index()
-    df_plot_pr.columns = ['Tipo de Escola', 'Porcentagem']
-    
-    df_plot_br = prop_br.reset_index()
-    df_plot_br.columns = ['Tipo de Escola', 'Porcentagem']
-
-    col1, col2 = st.columns(2)
+    df_plot_pr = obter_proporcoes(df_pr_analise)
+    df_plot_br = obter_proporcoes(df_br_analise)
 
     cores_mapa = {'Pública': '#1f77b4', 'Privada': '#ff7f0e', 'Não Respondeu': '#7f7f7f'}
 
+    col1, col2 = st.columns(2)
+
     with col1:
         st.subheader("Paraná (PR)")
-        fig_pr = px.pie(df_plot_pr, values='Porcentagem', names='Tipo de Escola', hole=0.4, color='Tipo de Escola', color_discrete_map=cores_mapa)
+        fig_pr = px.pie(
+            df_plot_pr, values='Porcentagem', names='Tipo de Escola', 
+            hole=0.4, color='Tipo de Escola', color_discrete_map=cores_mapa
+        )
         fig_pr.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pr, use_container_width=True)
 
     with col2:
-        st.subheader("Brasil Médio")
-        fig_br = px.pie(df_plot_br, values='Porcentagem', names='Tipo de Escola', hole=0.4, color='Tipo de Escola', color_discrete_map=cores_mapa)
+        st.subheader("Brasil (Excl. PR)")
+        fig_br = px.pie(
+            df_plot_br, values='Porcentagem', names='Tipo de Escola', 
+            hole=0.4, color='Tipo de Escola', color_discrete_map=cores_mapa
+        )
         fig_br.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_br, use_container_width=True)
         
-    
     st.markdown("---")
-    st.subheader("Tabela Detalhada:")
+    st.subheader("Comparativo Quantitativo")
 
-    abs_pr = df_pr_analise['TP_ESCOLA'].value_counts().rename(index=mapa_escola)
-    abs_br = df_br_analise['TP_ESCOLA'].value_counts().rename(index=mapa_escola)
+    abs_pr = df_pr_analise['TP_ESCOLA_LABEL'].value_counts()
+    abs_br = df_br_analise['TP_ESCOLA_LABEL'].value_counts()
+    
+    pct_pr = (abs_pr / abs_pr.sum() * 100).round(2)
+    pct_br = (abs_br / abs_br.sum() * 100).round(2)
 
     df_tabela = pd.DataFrame({
-        'Paraná (Total)': abs_pr,
-        'Paraná (%)': prop_pr,
-        'Brasil (Total)': abs_br,
-        'Brasil (%)': prop_br
-    }).fillna(0) 
-    
-    df_tabela['Paraná (%)'] = df_tabela['Paraná (%)'].round(2)
-    df_tabela['Brasil (%)'] = df_tabela['Brasil (%)'].round(2)
-    
-    df_tabela['Paraná (Total)'] = df_tabela['Paraná (Total)'].astype(int)
-    df_tabela['Brasil (Total)'] = df_tabela['Brasil (Total)'].astype(int)
+        'Paraná (Inscritos)': abs_pr,
+        'Paraná (%)': pct_pr,
+        'Brasil (Inscritos)': abs_br,
+        'Brasil (%)': pct_br
+    }).fillna(0)
 
-    st.dataframe(df_tabela, use_container_width=True)
+    st.dataframe(df_tabela.style.format({
+        'Paraná (%)': '{:.2f}%',
+        'Brasil (%)': '{:.2f}%',
+        'Paraná (Inscritos)': '{:,}',
+        'Brasil (Inscritos)': '{:,}'
+    }), use_container_width=True)
+
+    st.caption("Fonte: Microdados ENEM 2023 | Processamento Modular Próprio")
