@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 DIRETORIO_ATUAL = Path(__file__).resolve().parent.parent.parent
-CAMINHO_PARQUET = DIRETORIO_ATUAL / 'data' / 'MICRODADOS_ENEM_2023_OTIMIZADO.parquet'
+CAMINHO_PARQUET = DIRETORIO_ATUAL / 'data' / 'dados_enem_otimizados.parquet'
 
 @st.cache_data(show_spinner="Carregando Pipeline Otimizado...") 
 def carregar_dados_projeto():
